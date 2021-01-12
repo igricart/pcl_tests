@@ -137,6 +137,9 @@ include_directories(
 # add_executable(${PROJECT_NAME}_node src/pcl_exercise_node.cpp)
 add_executable(pcl_ros_sample src/pcl_ros_sample.cpp)
 target_link_libraries(pcl_ros_sample ${catkin_LIBRARIES})
+
+add_executable(cylinder_segmentation src/cylinder_segmentation.cpp)
+target_link_libraries(cylinder_segmentation ${catkin_LIBRARIES})
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
