@@ -140,6 +140,9 @@ target_link_libraries(pcl_ros_sample ${catkin_LIBRARIES})
 
 add_executable(cylinder_segmentation src/cylinder_segmentation.cpp)
 target_link_libraries(cylinder_segmentation ${catkin_LIBRARIES})
+
+add_executable(extract_indices src/extract_indices.cpp)
+target_link_libraries(extract_indices ${catkin_LIBRARIES})
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
