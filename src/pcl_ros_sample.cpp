@@ -30,9 +30,47 @@ void cloud_cb_extract_indices (const sensor_msgs::PointCloud2ConstPtr& input)
   sor.filter(*cloud_filtered_ptr);
 
   sensor_msgs::PointCloud2 output;
-  pcl_conversions::fromPCL(*cloud_filtered_ptr, output);
+  sensor_msgs::PointCloud2 output_1;
+  sensor_msgs::PointCloud2 output_2;
+  pcl_conversions::fromPCL(*cloud_filtered_ptr, output_1);
 
-  pub.publish(output);
+  pcl::ModelCoefficients::Ptr coefficients (new pcl::ModelCoefficients ());
+  pcl::PointIndices::Ptr inliers (new pcl::PointIndices ());
+
+  // Create the segmentation object
+  pcl::SACSegmentation<pcl::PointXYZ> seg;
+  // Optional
+  seg.setOptimizeCoefficients (true);
+  // Mandatory
+  seg.setModelType (pcl::SACMODEL_PLANE);
+  seg.setMethodType (pcl::SAC_RANSAC);
+  seg.setMaxIterations (1000);
+  seg.setDistanceThreshold (0.01);
+
+  // Make cloud const ptr
+  pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_const_ptr (new pcl::PointCloud<pcl::PointXYZ>());
+  pcl::fromPCLPointCloud2(*cloud_filtered_ptr, *cloud_const_ptr);
+  
+  seg.setInputCloud(cloud_const_ptr);
+  seg.segment (*inliers, *coefficients);
+  if (inliers->indices.size () == 0)
+  {
+    std::cerr << "Could not estimate a planar model for the given dataset." << std::endl;
+  }
+  // Create the filtering object
+  pcl::ExtractIndices<pcl::PointXYZ> extract;
+  extract.setInputCloud(cloud_const_ptr);
+  extract.setIndices(inliers);
+  extract.setNegative(true);
+
+  // Obtain images without floor
+  pcl::PointCloud<pcl::PointXYZ>::Ptr extracted_cloud_ptr (new pcl::PointCloud<pcl::PointXYZ>);
+  pcl::PCLPointCloud2::Ptr pcl2_extracted_cloud_ptr(new pcl::PCLPointCloud2);
+  extract.filter(*extracted_cloud_ptr);
+  pcl::toPCLPointCloud2(*extracted_cloud_ptr, *pcl2_extracted_cloud_ptr);
+  pcl_conversions::fromPCL(*pcl2_extracted_cloud_ptr, output_2);
+
+  pub.publish(output_2);
 }
 
 void cloud_cb_model_plane (const sensor_msgs::PointCloud2ConstPtr& input)
