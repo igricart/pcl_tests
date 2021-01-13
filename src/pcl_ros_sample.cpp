@@ -10,6 +10,9 @@
 #include <pcl/sample_consensus/method_types.h>
 #include <pcl/segmentation/sac_segmentation.h>
 
+ros::Publisher pub_voxel_grid_filter;
+ros::Publisher pub_2;
+ros::Publisher pub_3;
 ros::Publisher pub;
 
 void cloud_cb_extract_indices (const sensor_msgs::PointCloud2ConstPtr& input)
@@ -30,10 +33,11 @@ void cloud_cb_extract_indices (const sensor_msgs::PointCloud2ConstPtr& input)
   sor.filter(*cloud_filtered_ptr);
 
   sensor_msgs::PointCloud2 output;
-  sensor_msgs::PointCloud2 output_1;
+  sensor_msgs::PointCloud2 output_voxel_grid_filter;
   sensor_msgs::PointCloud2 output_2;
-  pcl_conversions::fromPCL(*cloud_filtered_ptr, output_1);
-
+  sensor_msgs::PointCloud2 output_3;
+  pcl_conversions::fromPCL(*cloud_filtered_ptr, output_voxel_grid_filter);
+  pub_voxel_grid_filter.publish(output_voxel_grid_filter);
   pcl::ModelCoefficients::Ptr coefficients (new pcl::ModelCoefficients ());
   pcl::PointIndices::Ptr inliers (new pcl::PointIndices ());
 
@@ -50,27 +54,50 @@ void cloud_cb_extract_indices (const sensor_msgs::PointCloud2ConstPtr& input)
   // Make cloud const ptr
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_const_ptr (new pcl::PointCloud<pcl::PointXYZ>());
   pcl::fromPCLPointCloud2(*cloud_filtered_ptr, *cloud_const_ptr);
-  
-  seg.setInputCloud(cloud_const_ptr);
-  seg.segment (*inliers, *coefficients);
-  if (inliers->indices.size () == 0)
-  {
-    std::cerr << "Could not estimate a planar model for the given dataset." << std::endl;
-  }
-  // Create the filtering object
   pcl::ExtractIndices<pcl::PointXYZ> extract;
-  extract.setInputCloud(cloud_const_ptr);
-  extract.setIndices(inliers);
-  extract.setNegative(true);
+  
+  int i = 0, nr_points = (int) cloud_const_ptr->size ();
+  while (cloud_const_ptr->size () > 0.3 * nr_points)
+  {
+    seg.setInputCloud(cloud_const_ptr);
+    seg.segment (*inliers, *coefficients);
+    if (inliers->indices.size () == 0)
+    {
+      std::cerr << "Could not estimate a planar model for the given dataset." << std::endl;
+    }
+    // Create the filtering object
 
-  // Obtain images without floor
-  pcl::PointCloud<pcl::PointXYZ>::Ptr extracted_cloud_ptr (new pcl::PointCloud<pcl::PointXYZ>);
-  pcl::PCLPointCloud2::Ptr pcl2_extracted_cloud_ptr(new pcl::PCLPointCloud2);
-  extract.filter(*extracted_cloud_ptr);
-  pcl::toPCLPointCloud2(*extracted_cloud_ptr, *pcl2_extracted_cloud_ptr);
-  pcl_conversions::fromPCL(*pcl2_extracted_cloud_ptr, output_2);
+    extract.setInputCloud(cloud_const_ptr);
+    extract.setIndices(inliers);
+    extract.setNegative(true);
 
-  pub.publish(output_2);
+    // Obtain images without floor
+    pcl::PointCloud<pcl::PointXYZ>::Ptr extracted_cloud_ptr (new pcl::PointCloud<pcl::PointXYZ>);
+    pcl::PCLPointCloud2::Ptr pcl2_extracted_cloud_ptr(new pcl::PCLPointCloud2);
+    extract.filter(*extracted_cloud_ptr);
+    pcl::toPCLPointCloud2(*extracted_cloud_ptr, *pcl2_extracted_cloud_ptr);
+    if (i == 0)
+    {
+      pcl_conversions::fromPCL(*pcl2_extracted_cloud_ptr, output_2);
+      pub_2.publish(output_2);
+    } else if (i == 1)
+    {
+      pcl_conversions::fromPCL(*pcl2_extracted_cloud_ptr, output_3);
+      pub_3.publish(output_3);
+    } else
+    {
+      std::cout << "Not handled case of multiples filters" << std::endl;
+    }
+    
+    // Create the filtering object
+    pcl::PointCloud<pcl::PointXYZ>::Ptr rest_extracted_cloud_ptr(new pcl::PointCloud<pcl::PointXYZ>);
+    extract.setNegative (false);
+    extract.filter (*rest_extracted_cloud_ptr);
+    cloud_const_ptr.swap (rest_extracted_cloud_ptr);
+
+    i++;
+    
+  }
 }
 
 void cloud_cb_model_plane (const sensor_msgs::PointCloud2ConstPtr& input)
@@ -172,6 +199,9 @@ int main (int argc, char** argv)
 
   // Create a ROS publisher for the output point cloud
   pub = nh.advertise<sensor_msgs::PointCloud2> ("output", 1);
+  pub_voxel_grid_filter = nh.advertise<sensor_msgs::PointCloud2> ("output_voxel_grid_filter", 1);
+  pub_2 = nh.advertise<sensor_msgs::PointCloud2> ("output_2", 1);
+  pub_3 = nh.advertise<sensor_msgs::PointCloud2> ("output_3", 1);
 
   // Create a ROS publisher for the output model coefficients
   // pub = nh.advertise<pcl_msgs::ModelCoefficients> ("output", 1);
