@@ -16,7 +16,7 @@ main (int argc, char** argv)
 
   // Fill in the cloud data
   pcl::PCDReader reader;
-  reader.read ("table_scene_lms400.pcd", *cloud_blob);
+  reader.read ("scenario_1.pcd", *cloud_blob);
 
   std::cerr << "PointCloud before filtering: " << cloud_blob->width * cloud_blob->height << " data points." << std::endl;
 
@@ -66,7 +66,7 @@ main (int argc, char** argv)
     // Extract the inliers
     extract.setInputCloud (cloud_filtered);
     extract.setIndices (inliers);
-    extract.setNegative (false);
+    extract.setNegative (true);
     extract.filter (*cloud_p);
     std::cerr << "PointCloud representing the planar component: " << cloud_p->width * cloud_p->height << " data points." << std::endl;
 
