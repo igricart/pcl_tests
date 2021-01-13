@@ -17,8 +17,8 @@ void cloud_cb_extract_indices (const sensor_msgs::PointCloud2ConstPtr& input)
   // Container for original & filtered data
   pcl::PCLPointCloud2* cloud = new pcl::PCLPointCloud2;
   pcl::PCLPointCloud2ConstPtr cloudPtr(cloud);
-  pcl::PCLPointCloud2* cloud_filtered_ptr;
   pcl::PCLPointCloud2 cloud_filtered;
+  pcl::PCLPointCloud2::Ptr cloud_filtered_ptr(new pcl::PCLPointCloud2);
 
   // Convert to PCL data type
   pcl_conversions::toPCL(*input, *cloud);
@@ -27,10 +27,10 @@ void cloud_cb_extract_indices (const sensor_msgs::PointCloud2ConstPtr& input)
   pcl::VoxelGrid<pcl::PCLPointCloud2> sor;
   sor.setInputCloud(cloudPtr);
   sor.setLeafSize(0.1f, 0.1f, 0.1f);
-  sor.filter(cloud_filtered);
+  sor.filter(*cloud_filtered_ptr);
 
   sensor_msgs::PointCloud2 output;
-  pcl_conversions::fromPCL(cloud_filtered, output);
+  pcl_conversions::fromPCL(*cloud_filtered_ptr, output);
 
   pub.publish(output);
 }
