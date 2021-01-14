@@ -1,6 +1,7 @@
 #include <ros/ros.h>
 // PCL specific includes
 #include <sensor_msgs/PointCloud2.h>
+#include <pcl_ros/point_cloud.h>
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/filters/extract_indices.h>
 #include <pcl_conversions/pcl_conversions.h>
@@ -9,6 +10,11 @@
 #include <pcl/sample_consensus/model_types.h>
 #include <pcl/sample_consensus/method_types.h>
 #include <pcl/segmentation/sac_segmentation.h>
+
+// #include <pcl/ModelCoefficients.h>
+// #include <pcl/filters/extract_indices.h>
+// #include <pcl/filters/passthrough.h>
+// #include <pcl/features/normal_3d.h>
 
 ros::Publisher pub_voxel_grid_filter;
 ros::Publisher pub_2;
@@ -57,8 +63,8 @@ void cloud_cb_extract_indices (const sensor_msgs::PointCloud2ConstPtr& input)
   pcl::ExtractIndices<pcl::PointXYZ> extract;
   
   int i = 0, nr_points = (int) cloud_const_ptr->size ();
-  while (cloud_const_ptr->size () > 0.3 * nr_points)
-  {
+  // while (cloud_const_ptr->size () > 0.3 * nr_points)
+  // {
     seg.setInputCloud(cloud_const_ptr);
     seg.segment (*inliers, *coefficients);
     if (inliers->indices.size () == 0)
@@ -95,9 +101,14 @@ void cloud_cb_extract_indices (const sensor_msgs::PointCloud2ConstPtr& input)
     extract.filter (*rest_extracted_cloud_ptr);
     cloud_const_ptr.swap (rest_extracted_cloud_ptr);
 
-    i++;
+    //pcl_conversions::fromPCL(*cloud_const_ptr, output_3);
+    // Publish pcl::PointCloud<pcl::PointXYZ>
+    pub_3.publish(*cloud_const_ptr);
+    std::cout << "In the end of section: " << i << "the cloud filtered size is equal to: "<< cloud_const_ptr->size() << std::endl;
+
+    //i++;
     
-  }
+  // }
 }
 
 void cloud_cb_model_plane (const sensor_msgs::PointCloud2ConstPtr& input)
@@ -201,7 +212,7 @@ int main (int argc, char** argv)
   pub = nh.advertise<sensor_msgs::PointCloud2> ("output", 1);
   pub_voxel_grid_filter = nh.advertise<sensor_msgs::PointCloud2> ("output_voxel_grid_filter", 1);
   pub_2 = nh.advertise<sensor_msgs::PointCloud2> ("output_2", 1);
-  pub_3 = nh.advertise<sensor_msgs::PointCloud2> ("output_3", 1);
+  pub_3 = nh.advertise<pcl::PointCloud<pcl::PointXYZ>> ("output_3", 1);
 
   // Create a ROS publisher for the output model coefficients
   // pub = nh.advertise<pcl_msgs::ModelCoefficients> ("output", 1);
